@@ -87,6 +87,18 @@ function ActiveQuestItemManager:Update()
 
 	local questName, isHeader, objectiveText, itemType, itemName, numNeeded, numObtained
 
+	-- SelectQuestLogEntry() below changes GLOBAL game state, not just something
+	-- local to this scan: it's the same selection the default quest log UI and
+	-- SetAbandonQuest()/QuestLogPushQuest() act on. The UI tracks its own
+	-- highlighted row separately and doesn't re-sync the engine's selection on
+	-- every redraw, so leaving this loop's last entry selected is invisible until
+	-- it isn't - the player clicks their quest, the highlight looks correct, and
+	-- Abandon takes out the LAST non-header quest in the log instead. Intermittent
+	-- in practice, because it only bites when a QUEST_LOG_UPDATE (which fires on
+	-- objective progress, looting, opening the log) lands between selecting a
+	-- quest and confirming the abandon. So put the selection back when done.
+	local originalSelection = _G.GetQuestLogSelection()
+
 	for questNum = 1, _G.GetNumQuestLogEntries(), 1 do
 
 		-- Only need a couple pieces of information from GetQuestLogTitle.
@@ -123,6 +135,13 @@ function ActiveQuestItemManager:Update()
 				end
 			end
 		end
+	end
+
+	-- Restoring 0 is meaningful and correct: it's what GetQuestLogSelection()
+	-- reports when nothing was selected, and re-selecting nothing is the honest
+	-- way to leave things as they were found.
+	if originalSelection then
+		_G.SelectQuestLogEntry(originalSelection)
 	end
 end
 
